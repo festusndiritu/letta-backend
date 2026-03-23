@@ -2,49 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6e78e86c-85d5-431b-a01a-67177d8eebf5" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Makefile.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/alembic.ini" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/alembic/env.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/auth/dependencies.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/auth/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/auth/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/auth/service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/contacts/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/contacts/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/contacts/service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/cleanup.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/encryption.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/dashboard/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/database.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/groups/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/groups/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/groups/service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/media/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/media/spaces.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/anxiety.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/connection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/preview.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/reactions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/router.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/schemas.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/search.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/messaging/sessions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/notifications/fcm.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/entrypoint.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,17 +38,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/bloom/Documents/Projects/FastAPI/Letta Backend"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/bloom/Documents/Projects/FastAPI/Letta Backend&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/app" />
