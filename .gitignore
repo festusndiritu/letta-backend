@@ -1,0 +1,29 @@
+# Dependencies
+.venv/
+uv.lock
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+letta-implementation-plan.md
+
+# OS
+.DS_Store
+
+# Alembic auto-generated (keep versions/)
+# alembic/versions/ — keep this tracked
+
+# Letsencrypt (never commit certs)
+letsencrypt/
+acme.json
