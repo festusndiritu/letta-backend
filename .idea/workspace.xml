@@ -2,8 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6e78e86c-85d5-431b-a01a-67177d8eebf5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/alembic/versions/ae7f42741725_models_update.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,7 +18,17 @@
     <persistenceIdMap>
       <entry key="_/home/bloom/Documents/Projects/FastAPI/Letta" value="3BIVbBQQAqoWwmPsZIGbQlrTxMt" />
       <entry key="_/home/bloom/Documents/Projects/FastAPI/Letta Backend" value="3BIrCz2luwGJBDiROlkm1HkqMwD" />
+      <entry key="_/home/bloom/Documents/Projects/Letta/Letta Backend" value="3BLrEHLlggGAZc9UQiTK5EINot5" />
     </persistenceIdMap>
+  </component>
+  <component name="CopilotUserSelectedChatMode">
+    <option name="chatModeId" value="Ask" />
+  </component>
+  <component name="CopilotUserSelectedModel">
+    <selectedModels>
+      <entry key="chat-panel" value="GPT-5.3-Codex" />
+      <entry key="agent-panel" value="GPT-5.3-Codex" />
+    </selectedModels>
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -46,7 +60,7 @@
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/bloom/Documents/Projects/FastAPI/Letta Backend&quot;
+    &quot;last_opened_file_path&quot;: &quot;/home/bloom/Documents/Projects/Letta/Letta Backend&quot;
   }
 }</component>
   <component name="RecentsManager">

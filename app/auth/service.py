@@ -58,27 +58,32 @@ def _generate_code() -> str:
 
 
 async def _send_sms(phone_number: str, code: str) -> None:
-    async with httpx.AsyncClient() as client:
-        data = {
-            "username": settings.at_username,
-            "to": phone_number,
-            "message": f"Your Letta code is {code}. Valid for {_OTP_TTL_MINUTES} minutes.",
-        }
-        if settings.at_sender_id:
-            data["from"] = settings.at_sender_id
+    """
+    Send OTP via Tiara Connect.
+    Phone number must be in E.164 without the +, e.g. 254712345678
+    The + is stripped here since Tiara expects digits only.
+    """
+    to = phone_number.lstrip("+")
 
+    async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.post(
-            "https://api.africastalking.com/version1/messaging",
+            settings.tiara_endpoint,
             headers={
-                "apiKey": settings.at_api_key,
-                "Accept": "application/json",
+                "Authorization": f"Bearer {settings.tiara_api_key}",
+                "Content-Type": "application/json",
             },
-            data=data,
-            timeout=10.0,
+            json={
+                "from": settings.tiara_sender_id,
+                "to": to,
+                "message": f"Your Letta code is {code}. Valid for {_OTP_TTL_MINUTES} minutes.",
+            },
         )
-        print(f"[AT] status={response.status_code} body={response.text}")
-        if response.status_code != 201:
-            raise RuntimeError(f"Africa's Talking error: {response.text}")
+
+    data = response.json()
+    print(f"[Tiara] status={response.status_code} body={data}")
+
+    if response.status_code != 200 or data.get("status") != "SUCCESS":
+        raise RuntimeError(f"Tiara Connect error: {data.get('desc', response.text)}")
 
 
 async def request_otp(phone_number: str, db: AsyncSession) -> None:

@@ -17,10 +17,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
 
-    # Africa's Talking (SMS OTP)
-    at_api_key: str = ""
-    at_username: str = ""
-    at_sender_id: str = ""
+    # Tiara Connect (SMS OTP)
+    tiara_api_key: str = ""
+    tiara_endpoint: str = "https://api2.tiaraconnect.io/api/messaging/sendsms"
+    tiara_sender_id: str = "CONNECT"
 
     # Resend (email)
     resend_api_key: str = ""
