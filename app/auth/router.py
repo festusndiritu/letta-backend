@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,13 +16,31 @@ from app.auth.schemas import (
 )
 from app.database import get_db
 from app.models import PushToken, User
-from pydantic import BaseModel
 
 router = APIRouter()
 
 
 class PushTokenIn(BaseModel):
     fcm_token: str
+
+
+class VerifyOtpOut(BaseModel):
+    """
+    Returned by /verify-otp.
+
+    Existing user:  needs_profile=False, tokens populated, setup_token=None
+    New user:       needs_profile=True,  setup_token populated, tokens=None
+    """
+    needs_profile: bool
+    access_token: str | None = None
+    refresh_token: str | None = None
+    setup_token: str | None = None
+
+
+class CompleteProfileIn(BaseModel):
+    setup_token: str
+    display_name: str
+    avatar_url: str | None = None  # pre-uploaded URL; None if user skipped avatar
 
 
 @router.post("/request-otp", response_model=RequestOtpOut)
@@ -33,13 +52,36 @@ async def request_otp(body: RequestOtpIn, db: AsyncSession = Depends(get_db)):
     return RequestOtpOut(message="OTP sent.")
 
 
-@router.post("/verify-otp", response_model=TokenPair)
+@router.post("/verify-otp", response_model=VerifyOtpOut)
 async def verify_otp(body: VerifyOtpIn, db: AsyncSession = Depends(get_db)):
     try:
-        user, _ = await service.verify_otp_and_login(
+        user, is_new, setup_token = await service.verify_otp_and_login(
             body.phone_number,
             body.code,
+            db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if is_new:
+        # OTP verified — send the frontend to DisplayNameScreen
+        return VerifyOtpOut(needs_profile=True, setup_token=setup_token)
+
+    access, refresh = service.create_token_pair(str(user.id))
+    return VerifyOtpOut(needs_profile=False, access_token=access, refresh_token=refresh)
+
+
+@router.post("/complete-profile", response_model=TokenPair)
+async def complete_profile(body: CompleteProfileIn, db: AsyncSession = Depends(get_db)):
+    """
+    Called by DisplayNameScreen once the user has entered their name (and optional avatar URL).
+    Validates the setup token, creates the user, and returns a full token pair.
+    """
+    try:
+        user = await service.complete_profile(
+            body.setup_token,
             body.display_name,
+            body.avatar_url,
             db,
         )
     except ValueError as e:

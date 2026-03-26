@@ -2,11 +2,13 @@
 Auth service.
 
 OTP flow:
-  1. request-otp  → generate 6-digit code, hash it, store in otp_codes, send via Africa's Talking
-  2. verify-otp   → look up unexpired unused code, bcrypt verify, mark used
-                    if user exists → issue tokens
-                    if new user   → require display_name, create user, issue tokens
-  3. refresh      → validate refresh token, issue new pair
+  1. request-otp      → generate 6-digit code, hash it, store in otp_codes, send via Africa's Talking
+  2. verify-otp       → look up unexpired unused code, bcrypt verify, mark used
+                        if user exists  → issue tokens            (needs_profile: false)
+                        if new user     → issue short-lived setup token (needs_profile: true)
+  3. complete-profile → validate setup token, create user with display_name + optional avatar_url
+                        → issue full token pair
+  4. refresh          → validate refresh token, issue new pair
 
 Rate limiting: max 3 active (unused, unexpired) OTPs per phone number.
 This prevents SMS bombing without a Redis dependency.
@@ -30,6 +32,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _OTP_TTL_MINUTES = 10
 _OTP_MAX_ACTIVE = 3
+
+# A short-lived token kind used only between verify-otp and complete-profile.
+# It carries the verified phone number but grants no access to the API.
+_SETUP_TOKEN_TTL_MINUTES = 15
 
 
 # ---------------------------------------------------------------------------
@@ -122,11 +128,15 @@ async def request_otp(phone_number: str, db: AsyncSession) -> None:
 async def verify_otp_and_login(
     phone_number: str,
     code: str,
-    display_name: str | None,
     db: AsyncSession,
-) -> tuple[User, bool]:
+) -> tuple[User | None, bool, str | None]:
     """
-    Verify OTP. Returns (user, is_new_user).
+    Verify OTP. Returns (user, is_new_user, setup_token).
+
+    Existing user → (user,  False, None)         caller issues full token pair
+    New user      → (None,  True,  setup_token)   caller returns needs_profile response;
+                                                   setup_token is passed to complete-profile
+
     Raises ValueError for any invalid/expired/used code.
     """
     now = datetime.now(UTC)
@@ -160,20 +170,55 @@ async def verify_otp_and_login(
 
     if user:
         user.last_seen = now
-        return user, False
+        return user, False, None
 
-    # New user — display_name required
-    if not display_name or not display_name.strip():
-        raise ValueError("display_name is required for new accounts.")
+    # New user — OTP is verified but we still need their display name (and optional avatar).
+    # Issue a short-lived setup token so the frontend can POST to /auth/complete-profile
+    # without re-verifying the OTP.
+    setup_token = _make_token(
+        sub=phone_number,
+        kind="setup",
+        expires_delta=timedelta(minutes=_SETUP_TOKEN_TTL_MINUTES),
+    )
+    return None, True, setup_token
+
+
+async def complete_profile(
+    setup_token: str,
+    display_name: str,
+    avatar_url: str | None,
+    db: AsyncSession,
+) -> User:
+    """
+    Validate a setup token and create the new user account.
+
+    Called after DisplayNameScreen collects display_name (and optional avatar).
+    Returns the newly created User so the caller can issue a full token pair.
+    """
+    phone_number = decode_token(setup_token, expected_kind="setup")
+
+    # Guard: don't create a duplicate if somehow called twice
+    result = await db.execute(
+        select(User).where(User.phone_number == phone_number)
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        # Already created (e.g. double-tap). Return as-is.
+        return existing
+
+    stripped = display_name.strip()
+    if len(stripped) < 2:
+        raise ValueError("display_name must be at least 2 characters.")
 
     user = User(
         phone_number=phone_number,
         phone_hash=hash_phone(phone_number),
-        display_name=display_name.strip(),
+        display_name=stripped,
+        avatar_url=avatar_url,
     )
     db.add(user)
     await db.flush()
-    return user, True
+    return user
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +249,7 @@ def create_token_pair(user_id: str) -> tuple[str, str]:
 
 
 def decode_token(token: str, expected_kind: str = "access") -> str:
-    """Decode and validate a JWT. Returns the user_id (sub). Raises on failure."""
+    """Decode and validate a JWT. Returns the sub claim. Raises on failure."""
     try:
         payload = jwt.decode(
             token,

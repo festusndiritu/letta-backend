@@ -22,7 +22,6 @@ class RequestOtpOut(BaseModel):
 class VerifyOtpIn(BaseModel):
     phone_number: str
     code: str
-    display_name: str | None = None  # required only on first login (registration)
 
 
 class TokenPair(BaseModel):

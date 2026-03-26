@@ -2,12 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6e78e86c-85d5-431b-a01a-67177d8eebf5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/alembic/versions/ae7f42741725_models_update.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/schemas.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/auth/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
