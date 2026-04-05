@@ -46,11 +46,11 @@ ALLOWED_TYPES: dict[str, str] = {
 
 # Max file size per type (bytes)
 MAX_SIZES: dict[str, int] = {
-    "images": 10 * 1024 * 1024,    # 10 MB
+    "images": 15 * 1024 * 1024,    # 15 MB
     "videos": 100 * 1024 * 1024,   # 100 MB
-    "audio": 20 * 1024 * 1024,     # 20 MB
+    "audio": 40 * 1024 * 1024,     # 40 MB
     "documents": 20 * 1024 * 1024, # 20 MB
-    "avatars": 5 * 1024 * 1024,    # 5 MB
+    "avatars": 10 * 1024 * 1024,    # 10 MB
 }
 
 
@@ -70,7 +70,7 @@ def _public_url(key: str) -> str:
     # DO Spaces CDN URL format
     bucket = settings.do_spaces_bucket
     region = settings.do_spaces_region
-    return f"https://{bucket}.{region}.cdn.digitaloceanspaces.com/{key}"
+    return f"https://{bucket}.{region}.cdn.digitaloceanspaces.com/{bucket}/{key}"
 
 
 async def upload_file(
@@ -110,8 +110,10 @@ async def upload_file(
 async def delete_file(url: str) -> None:
     """Delete a file from Spaces given its public URL. Silent on failure."""
     try:
+        bucket = settings.do_spaces_bucket
+        region = settings.do_spaces_region
         # Extract key from URL
-        cdn_prefix = f"https://{settings.do_spaces_bucket}.{settings.do_spaces_region}.cdn.digitaloceanspaces.com/"
+        cdn_prefix = f"https://{bucket}.{region}.cdn.digitaloceanspaces.com/{bucket}/"
         if not url.startswith(cdn_prefix):
             return
         key = url[len(cdn_prefix):]

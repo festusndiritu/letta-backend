@@ -41,6 +41,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
         return
 
     user_id = uuid.UUID(user_id_str)
+    session_id = uuid.uuid4()
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.id == user_id))
@@ -49,7 +50,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
             await websocket.close(code=4001, reason="User not found")
             return
 
-        await manager.connect(user_id, websocket)
+        await manager.connect(user_id, websocket, session_id)
         await service.broadcast_presence(user, online=True, db=db)
         await db.commit()
 
@@ -92,7 +93,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
         except Exception as e:
             logger.exception("WebSocket error for user %s: %s", user_id, e)
         finally:
-            manager.disconnect(user_id)
+            manager.disconnect(user_id, session_id)
             async with AsyncSessionLocal() as offline_db:
                 result = await offline_db.execute(select(User).where(User.id == user_id))
                 offline_user = result.scalar_one_or_none()
@@ -162,15 +163,6 @@ async def get_missed_messages(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Called by Android immediately after reconnecting.
-    Returns all messages across all the user's conversations
-    that arrived after `since` (the last time the device was online).
-
-    Android stores the timestamp of the last received message locally
-    and passes it here on reconnect. This closes the gap between
-    going offline and reconnecting without needing a message queue.
-    """
     from datetime import datetime
     from sqlalchemy import select
     from app.models import Member, Message
@@ -183,7 +175,6 @@ async def get_missed_messages(
             detail="Invalid timestamp format. Use ISO 8601 e.g. 2026-01-01T00:00:00Z",
         )
 
-    # Get all conversation IDs this user is a member of
     result = await db.execute(
         select(Member.conversation_id).where(Member.user_id == current_user.id)
     )
@@ -192,15 +183,14 @@ async def get_missed_messages(
     if not conversation_ids:
         return []
 
-    # Fetch all messages in those conversations after since_dt
     result = await db.execute(
         select(Message)
         .where(
             Message.conversation_id.in_(conversation_ids),
             Message.created_at > since_dt,
-            Message.sender_id != current_user.id,  # don't return own messages
+            Message.sender_id != current_user.id,
         )
         .order_by(Message.created_at.asc())
-        .limit(500)  # safety cap — if gap is huge, Android paginates further
+        .limit(500)
     )
     return result.scalars().all()

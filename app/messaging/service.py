@@ -53,6 +53,23 @@ async def _get_fcm_token(user_id: uuid.UUID, db: AsyncSession) -> str | None:
     return result.scalar_one_or_none()
 
 
+def _build_knock_copy(sender: User, event: SendMessageEvent) -> tuple[str, str]:
+    title = sender.display_name or "New message"
+
+    if event.type == "text":
+        body = (event.content or "New message").strip() or "New message"
+    else:
+        body_by_type = {
+            "image": "Sent an image",
+            "video": "Sent a video",
+            "audio": "Sent an audio message",
+            "document": "Sent a document",
+        }
+        body = body_by_type.get(event.type, "Sent a message")
+
+    return title, body[:120]
+
+
 # ---------------------------------------------------------------------------
 # Message send
 # ---------------------------------------------------------------------------
@@ -143,8 +160,13 @@ async def handle_send_message(
 
             fcm_token = await _get_fcm_token(member_id, db)
             if fcm_token:
-                priority = "normal" if member_row and member_row.notification_profile == "quiet" else "high"
-                await send_knock(fcm_token, str(event.conversation_id))
+                title, body = _build_knock_copy(sender, event)
+                await send_knock(
+                    fcm_token=fcm_token,
+                    conversation_id=str(event.conversation_id),
+                    title=title,
+                    body=body,
+                )
 
     return message
 

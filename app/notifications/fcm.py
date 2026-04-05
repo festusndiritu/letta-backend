@@ -5,8 +5,9 @@ Authentication: the Firebase service account JSON is stored as a single
 environment variable (FCM_SERVICE_ACCOUNT_JSON) — paste the entire JSON
 content as the value in Dokploy's env var UI. No file placement needed.
 
-We send knock-only notifications — no message content in the payload.
-The Android app wakes up and opens its WebSocket to pull the actual message.
+We send a notification payload alongside the knock data so the OS can
+show a notification when the app is closed, while the Android app still
+wakes up and opens its WebSocket to pull the actual message.
 """
 
 import json
@@ -52,11 +53,18 @@ def _get_access_token() -> str:
     return _get_credentials().token
 
 
-async def send_knock(fcm_token: str, conversation_id: str) -> bool:
+async def send_knock(
+    fcm_token: str,
+    conversation_id: str,
+    title: str,
+    body: str,
+) -> bool:
     """
-    Send a data-only (knock) push to wake the Android app.
+    Send a notification + data (knock) push.
 
-    Contains just the conversation_id — no message text, no sender name.
+    The notification payload allows the OS to show a message when the app
+    is closed. The data payload still carries the conversation_id so the
+    Android app can sync content on open.
     Returns True on success, False on any error (non-fatal).
     """
     project_id = settings.fcm_project_id
@@ -74,6 +82,10 @@ async def send_knock(fcm_token: str, conversation_id: str) -> bool:
     payload = {
         "message": {
             "token": fcm_token,
+            "notification": {
+                "title": title,
+                "body": body,
+            },
             "data": {
                 "type": "knock",
                 "conversation_id": conversation_id,

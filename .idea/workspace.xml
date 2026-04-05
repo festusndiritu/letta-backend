@@ -3,9 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="6e78e86c-85d5-431b-a01a-67177d8eebf5" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/auth/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/auth/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/schemas.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/auth/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/media/spaces.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/media/spaces.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/notifications/fcm.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/notifications/fcm.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,7 +22,7 @@
     </persistenceIdMap>
   </component>
   <component name="CopilotUserSelectedChatMode">
-    <option name="chatModeId" value="Ask" />
+    <option name="chatModeId" value="Agent" />
   </component>
   <component name="CopilotUserSelectedModel">
     <selectedModels>
