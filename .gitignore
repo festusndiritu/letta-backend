@@ -30,3 +30,5 @@ acme.json
 
 # markdown
 *.md
+app/ANDROID_CLIENT_SPEC.md
+app/LETTA_IMPLEMENTATION_PLAN.md
