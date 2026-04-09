@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.messaging.schemas import MessageOut
+
 
 class CreateDirectConversationIn(BaseModel):
     other_user_id: uuid.UUID
@@ -29,6 +31,8 @@ class ConversationOut(BaseModel):
     avatar_url: str | None
     created_at: datetime
     members: list[MemberOut]
+    last_message: MessageOut | None = None
+    unread_count: int = 0
 
     model_config = {"from_attributes": True}
 

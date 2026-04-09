@@ -13,11 +13,12 @@ import re
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
 from app.models import User
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -73,10 +74,13 @@ def _extract_meta(html: str, url: str) -> PreviewOut:
 
 
 @router.get("/meta/preview", response_model=PreviewOut)
+@limiter.limit("30/minute")
 async def link_preview(
+    request: Request,
     url: str = Query(...),
     current_user: User = Depends(get_current_user),
 ):
+    _ = request
     # Basic URL validation
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:

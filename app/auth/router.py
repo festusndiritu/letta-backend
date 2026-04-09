@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from app.auth.schemas import (
 )
 from app.database import get_db
 from app.models import PushToken, User
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -44,7 +45,13 @@ class CompleteProfileIn(BaseModel):
 
 
 @router.post("/request-otp", response_model=RequestOtpOut)
-async def request_otp(body: RequestOtpIn, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def request_otp(
+    request: Request,
+    body: RequestOtpIn,
+    db: AsyncSession = Depends(get_db),
+):
+    _ = request
     try:
         await service.request_otp(body.phone_number, db)
     except ValueError as e:

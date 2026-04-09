@@ -7,12 +7,16 @@ when one already exists returns the existing conversation.
 """
 
 import uuid
+from datetime import UTC, datetime
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.encryption import decrypt_maybe
+from app.messaging.schemas import MessageOut
 from app.models import Conversation, Member, User
+from app.models import Message, Receipt
 
 
 async def _load_conversation(
@@ -100,7 +104,7 @@ async def create_group(
 async def get_user_conversations(
     user: User,
     db: AsyncSession,
-) -> list[Conversation]:
+) -> list[tuple[Conversation, dict]]:
     result = await db.execute(
         select(Conversation)
         .join(Member, Member.conversation_id == Conversation.id)
@@ -110,7 +114,53 @@ async def get_user_conversations(
         )
         .order_by(Conversation.id)  # stable order; Android sorts by last message
     )
-    return list(result.scalars().unique().all())
+    conversations = list(result.scalars().unique().all())
+    with_meta: list[tuple[Conversation, dict]] = []
+    for conv in conversations:
+        with_meta.append((conv, await get_conversation_meta(conv.id, user.id, db)))
+    return with_meta
+
+
+async def get_conversation_meta(
+    conversation_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> dict:
+    last_result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
+        .limit(1)
+    )
+    last_message = last_result.scalar_one_or_none()
+    if last_message and last_message.content:
+        last_message.content = decrypt_maybe(last_message.content)
+
+    last_read_result = await db.execute(
+        select(func.max(Receipt.read_at))
+        .join(Message, Message.id == Receipt.message_id)
+        .where(
+            Receipt.user_id == user_id,
+            Message.conversation_id == conversation_id,
+        )
+    )
+    last_read_at = last_read_result.scalar_one_or_none()
+    if last_read_at is None:
+        last_read_at = datetime(1970, 1, 1, tzinfo=UTC)
+
+    unread_result = await db.execute(
+        select(func.count(Message.id)).where(
+            Message.conversation_id == conversation_id,
+            Message.sender_id != user_id,
+            Message.created_at > last_read_at,
+        )
+    )
+    unread_count = unread_result.scalar_one() or 0
+
+    return {
+        "last_message": MessageOut.model_validate(last_message) if last_message else None,
+        "unread_count": unread_count,
+    }
 
 
 async def get_conversation_for_user(

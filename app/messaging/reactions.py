@@ -10,6 +10,7 @@ WS events:
 """
 
 import uuid
+import unicodedata
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -24,8 +25,15 @@ from app.models import Member, Message, Reaction, User
 
 router = APIRouter()
 
-# Allowed emojis — keep it focused, not a full picker
-ALLOWED_EMOJIS = {"👍", "❤️", "😂", "😮", "😢", "🔥"}
+
+def is_emoji(value: str) -> bool:
+    value = value.strip()
+    if not value or len(value) > 8:
+        return False
+    for char in value:
+        if ord(char) > 127 and unicodedata.category(char).startswith("S"):
+            return True
+    return any(ord(char) > 127 for char in value)
 
 
 class ReactIn(BaseModel):
@@ -45,10 +53,10 @@ async def react_to_message(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.emoji not in ALLOWED_EMOJIS:
+    if not is_emoji(body.emoji):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Emoji not allowed. Use one of: {', '.join(ALLOWED_EMOJIS)}",
+            detail="Invalid emoji payload.",
         )
 
     # Load message and verify user is in the conversation

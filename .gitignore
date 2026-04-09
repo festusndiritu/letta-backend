@@ -27,3 +27,6 @@ letta-implementation-plan.md
 # Letsencrypt (never commit certs)
 letsencrypt/
 acme.json
+
+# markdown
+*.md

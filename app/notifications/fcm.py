@@ -56,8 +56,8 @@ def _get_access_token() -> str:
 async def send_knock(
     fcm_token: str,
     conversation_id: str,
-    title: str,
-    body: str,
+    title: str | None = None,
+    body: str | None = None,
 ) -> bool:
     """
     Send a notification + data (knock) push.
@@ -83,8 +83,8 @@ async def send_knock(
         "message": {
             "token": fcm_token,
             "notification": {
-                "title": title,
-                "body": body,
+                "title": title or "New message",
+                "body": body or "You have a new message",
             },
             "data": {
                 "type": "knock",
@@ -114,3 +114,53 @@ async def send_knock(
         except httpx.RequestError as e:
             logger.error("FCM request error: %s", e)
             return False
+
+
+async def send_data_push(
+    fcm_token: str,
+    data: dict[str, str],
+    *,
+    high_priority: bool = True,
+) -> bool:
+    """Send a data-only FCM message (used for call wake-ups and silent sync)."""
+    project_id = settings.fcm_project_id
+    if not project_id:
+        logger.warning("FCM_PROJECT_ID not set — skipping data push")
+        return False
+
+    try:
+        access_token = _get_access_token()
+    except (ValueError, Exception) as e:
+        logger.error("FCM credentials error: %s", e)
+        return False
+
+    url = _FCM_URL.format(project_id=project_id)
+    payload = {
+        "message": {
+            "token": fcm_token,
+            "data": data,
+            "android": {
+                "priority": "high" if high_priority else "normal",
+            },
+        }
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                url,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10.0,
+            )
+            if response.status_code == 200:
+                return True
+            logger.warning("FCM data push failed [%s]: %s", response.status_code, response.text)
+            return False
+        except httpx.RequestError as e:
+            logger.error("FCM data push request error: %s", e)
+            return False
+

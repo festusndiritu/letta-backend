@@ -12,16 +12,17 @@ Handles all business logic for the realtime layer:
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messaging.connection import manager
 from app.messaging.schemas import MessageOut, SendMessageEvent
 from app.contacts.service import is_blocked
 from app.core.encryption import decrypt_maybe, encrypt_maybe
-from app.models import Contact, Conversation, Member, Message, PushToken, Receipt, User
+from app.models import Contact, Member, Message, PushToken, Reaction, Receipt, User
 from app.notifications.fcm import send_knock
 
 logger = logging.getLogger(__name__)
@@ -102,12 +103,26 @@ async def handle_send_message(
         media_url=event.media_url,
         media_mime=event.media_mime,
         reply_to_id=event.reply_to_id,
+        poll_data=event.poll_data,
     )
+
+    disappear_result = await db.execute(
+        select(Member.disappear_after_seconds).where(
+            Member.conversation_id == event.conversation_id,
+            Member.user_id == sender.id,
+        )
+    )
+    disappear_after = disappear_result.scalar_one_or_none()
+    if disappear_after:
+        message.expires_at = datetime.now(UTC) + timedelta(seconds=disappear_after)
+
     db.add(message)
     await db.flush()
 
     # Decrypt for outbound — TLS protects the wire, DB stores ciphertext
     message.content = decrypt_maybe(message.content)
+    message.reactions = []
+    message.my_reaction = None
     message_out = MessageOut.model_validate(message).model_dump(mode="json")
     outbound_event = {"type": "message.new", "payload": message_out}
 
@@ -361,5 +376,38 @@ async def get_message_history(
     result = await db.execute(query)
     messages = result.scalars().all()
     for msg in messages:
-        msg.content = decrypt_maybe(msg.content)
+        if msg.deleted_at:
+            msg.content = None
+            msg.media_url = None
+        else:
+            msg.content = decrypt_maybe(msg.content)
+
+    await _attach_reactions_for_messages(messages, user.id, db)
     return messages
+
+
+async def _attach_reactions_for_messages(
+    messages: list[Message],
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> None:
+    if not messages:
+        return
+
+    message_ids = [m.id for m in messages]
+    result = await db.execute(
+        select(Reaction.message_id, Reaction.user_id, Reaction.emoji)
+        .where(Reaction.message_id.in_(message_ids))
+    )
+
+    counts: dict[uuid.UUID, dict[str, int]] = defaultdict(dict)
+    my_reactions: dict[uuid.UUID, str] = {}
+    for message_id, reactor_id, emoji in result.all():
+        counts[message_id][emoji] = counts[message_id].get(emoji, 0) + 1
+        if reactor_id == user_id:
+            my_reactions[message_id] = emoji
+
+    for message in messages:
+        message.reactions = counts.get(message.id, {})
+        message.my_reaction = my_reactions.get(message.id)
+

@@ -15,12 +15,12 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.media.spaces import delete_file
-from app.models import Message, Receipt
+from app.models import Message, Receipt, Status
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +58,35 @@ async def cleanup_old_messages():
         )
         undelivered_old = result.scalars().all()
 
-        to_delete = delivered_old + undelivered_old
+        # 3. Messages with explicit expiry (disappearing messages)
+        result = await db.execute(
+            select(Message).where(
+                Message.expires_at.isnot(None),
+                Message.expires_at < now,
+            )
+        )
+        expiring_old = result.scalars().all()
+
+        # Deduplicate by id because a message can match TTL and explicit expiry.
+        dedup: dict = {}
+        for msg in delivered_old + undelivered_old + expiring_old:
+            dedup[msg.id] = msg
+        to_delete = list(dedup.values())
 
         for message in to_delete:
             # Delete media from Spaces if present
             if message.media_url:
                 await delete_file(message.media_url)
             await db.delete(message)
+            deleted_count += 1
+
+        # 4. Expired statuses
+        status_result = await db.execute(select(Status).where(Status.expires_at < now))
+        expired_statuses = status_result.scalars().all()
+        for status in expired_statuses:
+            if status.media_url:
+                await delete_file(status.media_url)
+            await db.delete(status)
             deleted_count += 1
 
         await db.commit()

@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.messaging.connection import manager
-from app.models import Member, User
+from app.models import Conversation, Member, User
 import uuid
 
 router = APIRouter()
@@ -48,6 +48,10 @@ class SetFocusIn(BaseModel):
 
 class MuteIn(BaseModel):
     duration: MuteDuration
+
+
+class DisappearIn(BaseModel):
+    seconds: int | None = None
 
 
 _MUTE_DELTAS = {
@@ -79,10 +83,12 @@ async def set_focus_profile(
     # If switching to "off", close the WebSocket connection
     # The Android app sees the close and knows to stop trying until user switches back
     if body.profile == FocusProfile.off:
-        ws = manager._connections.get(current_user.id)
-        if ws:
-            await ws.close(code=4002, reason="Focus mode: off")
-            manager.disconnect(current_user.id)
+        for entry in manager.get_sessions(current_user.id):
+            try:
+                await entry.websocket.close(code=4002, reason="Focus mode: off")
+            except Exception:
+                pass
+            manager.disconnect(current_user.id, entry.session_id)
 
     return {"profile": body.profile.value}
 
@@ -130,3 +136,46 @@ async def unmute_conversation(
 
     member.muted_until = None
     await db.flush()
+
+
+@router.patch("/conversations/{conversation_id}/disappear", response_model=dict)
+async def set_disappearing_timer(
+    conversation_id: uuid.UUID,
+    body: DisappearIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    allowed = {None, 3600, 86400, 604800}
+    if body.seconds not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="seconds must be one of: null, 3600, 86400, 604800",
+        )
+
+    member_result = await db.execute(
+        select(Member).where(
+            Member.conversation_id == conversation_id,
+            Member.user_id == current_user.id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member.")
+
+    conv_result = await db.execute(select(Conversation).where(Conversation.id == conversation_id))
+    conversation = conv_result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+
+    if conversation.type == "group" and member.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can set disappear timer.")
+
+    if conversation.type == "direct":
+        all_members = await db.execute(select(Member).where(Member.conversation_id == conversation_id))
+        for row in all_members.scalars().all():
+            row.disappear_after_seconds = body.seconds
+    else:
+        member.disappear_after_seconds = body.seconds
+
+    await db.flush()
+    return {"conversation_id": str(conversation_id), "seconds": body.seconds}

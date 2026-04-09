@@ -2,12 +2,43 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6e78e86c-85d5-431b-a01a-67177d8eebf5" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/alembic/versions/a1c0f4d8b901_section9_indexes_part1.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/a7ee4ca1bc85_polls_and_votes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/b2f9d5a7132a_message_soft_delete.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/b8ff5db2cd96_section9_indexes_part2.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/c3aa0e6c8841_member_disappear_timer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/d4bb1f7e9952_statuses_and_views.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/e5cc2a809a63_pinned_messages.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/alembic/versions/f6dd3b90ab74_calls_table.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/ANDROID_CLIENT_SPEC.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/core/rate_limit.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/messaging/delete.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/messaging/pins.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/messaging/polls.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/statuses/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/statuses/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/media/spaces.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/media/spaces.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/auth/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/auth/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/cleanup.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/cleanup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/groups/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/groups/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/groups/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/groups/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/groups/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/groups/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/media/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/media/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/anxiety.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/anxiety.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/preview.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/preview.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/reactions.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/reactions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/messaging/router.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/router.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/messaging/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/search.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/messaging/service.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/messaging/service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/notifications/fcm.py" beforeDir="false" afterPath="$PROJECT_DIR$/app/notifications/fcm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

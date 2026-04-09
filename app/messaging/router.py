@@ -1,5 +1,7 @@
 import uuid
 import logging
+import asyncio
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
@@ -14,14 +16,27 @@ from app.messaging.schemas import (
     AckEvent,
     InboundEvent,
     MessageOut,
+    CallAnswerPayload,
+    CallIcePayload,
+    CallOfferPayload,
+    CallSimplePayload,
     ReadEvent,
     SendMessageEvent,
     TypingEvent,
 )
-from app.models import User
+from app.models import Call, Member, User
+from app.models import PushToken
+from app.notifications.fcm import send_data_push
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def receive_with_timeout(websocket: WebSocket, timeout: int = 90) -> dict:
+    try:
+        return await asyncio.wait_for(websocket.receive_json(), timeout=timeout)
+    except asyncio.TimeoutError as exc:
+        raise WebSocketDisconnect(code=1001, reason="Connection timed out") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +71,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 
         try:
             while True:
-                data = await websocket.receive_json()
+                data = await receive_with_timeout(websocket)
 
                 try:
                     event = InboundEvent(**data)
@@ -65,6 +80,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                         "type": "error",
                         "payload": {"detail": "Malformed event."},
                     })
+                    continue
+
+                if event.type == "ping":
+                    await websocket.send_json({"type": "pong", "payload": {}})
                     continue
 
                 async with AsyncSessionLocal() as event_db:
@@ -128,8 +147,166 @@ async def _dispatch(event: InboundEvent, user: User, db: AsyncSession) -> None:
             db=db,
         )
 
+    elif event.type == "call.offer":
+        payload = CallOfferPayload(**event.payload)
+        await _handle_call_offer(payload, user, db)
+
+    elif event.type == "call.answer":
+        payload = CallAnswerPayload(**event.payload)
+        await _handle_call_answer(payload, user, db)
+
+    elif event.type in ("call.ice-candidate", "call.ice_candidate"):
+        payload = CallIcePayload(**event.payload)
+        await _handle_call_ice(payload, user, db)
+
+    elif event.type == "call.reject":
+        payload = CallSimplePayload(**event.payload)
+        await _handle_call_reject(payload, user, db)
+
+    elif event.type == "call.end":
+        payload = CallSimplePayload(**event.payload)
+        await _handle_call_end(payload, user, db)
+
     else:
         raise ValueError(f"Unknown event type: {event.type}")
+
+
+async def _assert_member(conversation_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSession) -> None:
+    result = await db.execute(
+        select(Member).where(
+            Member.conversation_id == conversation_id,
+            Member.user_id == user_id,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise PermissionError("Not a member of this conversation.")
+
+
+async def _handle_call_offer(payload: CallOfferPayload, user: User, db: AsyncSession) -> None:
+    await _assert_member(payload.conversation_id, user.id, db)
+    await _assert_member(payload.conversation_id, payload.callee_id, db)
+
+    call = Call(
+        id=payload.call_id,
+        conversation_id=payload.conversation_id,
+        caller_id=user.id,
+        callee_id=payload.callee_id,
+        type=payload.type,
+        status="ringing",
+    )
+    db.add(call)
+    await db.flush()
+
+    delivered = await manager.send(payload.callee_id, {
+        "type": "call.offer",
+        "payload": {
+            "call_id": str(payload.call_id),
+            "conversation_id": str(payload.conversation_id),
+            "caller_id": str(user.id),
+            "type": payload.type,
+            "sdp": payload.sdp,
+        },
+    })
+
+    if not delivered:
+        token_result = await db.execute(
+            select(PushToken.fcm_token).where(PushToken.user_id == payload.callee_id)
+        )
+        fcm_token = token_result.scalar_one_or_none()
+        if fcm_token:
+            await send_data_push(
+                fcm_token,
+                {
+                    "type": "incoming_call",
+                    "call_id": str(payload.call_id),
+                    "caller_id": str(user.id),
+                    "caller_name": user.display_name,
+                    "call_type": payload.type,
+                    "conversation_id": str(payload.conversation_id),
+                },
+                high_priority=True,
+            )
+
+
+async def _handle_call_answer(payload: CallAnswerPayload, user: User, db: AsyncSession) -> None:
+    result = await db.execute(select(Call).where(Call.id == payload.call_id))
+    call = result.scalar_one_or_none()
+    if not call or call.callee_id != user.id:
+        raise PermissionError("Call not found or unauthorized.")
+
+    call.status = "answered"
+    call.answered_at = datetime.now(UTC)
+    await db.flush()
+
+    await manager.send(call.caller_id, {
+        "type": "call.answer",
+        "payload": {
+            "call_id": str(payload.call_id),
+            "callee_id": str(user.id),
+            "sdp": payload.sdp,
+        },
+    })
+
+
+async def _handle_call_ice(payload: CallIcePayload, user: User, db: AsyncSession) -> None:
+    result = await db.execute(select(Call).where(Call.id == payload.call_id))
+    call = result.scalar_one_or_none()
+    if not call or user.id not in {call.caller_id, call.callee_id}:
+        raise PermissionError("Call not found or unauthorized.")
+    if payload.target_user_id not in {call.caller_id, call.callee_id}:
+        raise PermissionError("Invalid call target.")
+
+    await manager.send(payload.target_user_id, {
+        "type": "call.ice-candidate",
+        "payload": {
+            "call_id": str(payload.call_id),
+            "from_user_id": str(user.id),
+            "candidate": payload.candidate,
+        },
+    })
+
+
+async def _handle_call_reject(payload: CallSimplePayload, user: User, db: AsyncSession) -> None:
+    result = await db.execute(select(Call).where(Call.id == payload.call_id))
+    call = result.scalar_one_or_none()
+    if not call or call.callee_id != user.id:
+        raise PermissionError("Call not found or unauthorized.")
+
+    call.status = "rejected"
+    call.ended_at = datetime.now(UTC)
+    await db.flush()
+
+    await manager.send(call.caller_id, {
+        "type": "call.rejected",
+        "payload": {
+            "call_id": str(payload.call_id),
+            "by": str(user.id),
+        },
+    })
+
+
+async def _handle_call_end(payload: CallSimplePayload, user: User, db: AsyncSession) -> None:
+    result = await db.execute(select(Call).where(Call.id == payload.call_id))
+    call = result.scalar_one_or_none()
+    if not call or user.id not in {call.caller_id, call.callee_id}:
+        raise PermissionError("Call not found or unauthorized.")
+
+    now = datetime.now(UTC)
+    call.status = "ended"
+    call.ended_at = now
+    if call.answered_at:
+        call.duration_seconds = int((now - call.answered_at).total_seconds())
+    await db.flush()
+
+    other_user = call.callee_id if user.id == call.caller_id else call.caller_id
+    await manager.send(other_user, {
+        "type": "call.ended",
+        "payload": {
+            "call_id": str(payload.call_id),
+            "by": str(user.id),
+            "duration_seconds": call.duration_seconds,
+        },
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -194,3 +371,41 @@ async def get_missed_messages(
         .limit(500)
     )
     return result.scalars().all()
+
+
+@router.get("/calls", response_model=list[dict])
+async def get_call_history(
+    limit: int = Query(20, ge=1, le=100),
+    before_id: uuid.UUID | None = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Call).where((Call.caller_id == current_user.id) | (Call.callee_id == current_user.id))
+
+    if before_id:
+        cursor_result = await db.execute(select(Call.started_at).where(Call.id == before_id))
+        cursor_ts = cursor_result.scalar_one_or_none()
+        if cursor_ts:
+            query = query.where(Call.started_at < cursor_ts)
+
+    result = await db.execute(
+        query.order_by(Call.started_at.desc()).limit(limit)
+    )
+
+    calls = []
+    for call in result.scalars().all():
+        calls.append(
+            {
+                "id": str(call.id),
+                "conversation_id": str(call.conversation_id),
+                "caller_id": str(call.caller_id),
+                "callee_id": str(call.callee_id),
+                "type": call.type,
+                "status": call.status,
+                "started_at": call.started_at.isoformat(),
+                "answered_at": call.answered_at.isoformat() if call.answered_at else None,
+                "ended_at": call.ended_at.isoformat() if call.ended_at else None,
+                "duration_seconds": call.duration_seconds,
+            }
+        )
+    return calls

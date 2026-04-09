@@ -68,6 +68,14 @@ async def search_messages(
     matched = []
     q_lower = q.lower()
     for msg in messages:
+        if msg.deleted_at:
+            msg.content = None
+            msg.media_url = None
+            matched.append(msg)
+            if len(matched) >= limit:
+                break
+            continue
+
         plaintext = decrypt_maybe(msg.content) or ""
         if q_lower in plaintext.lower():
             # Return with decrypted content for the response

@@ -5,7 +5,7 @@ POST /media/upload         — upload any media file, returns URL
 POST /media/avatar         — upload avatar specifically, updates user profile
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.media.spaces import ALLOWED_TYPES, upload_file
 from app.models import User
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -23,10 +24,13 @@ class UploadOut(BaseModel):
 
 
 @router.post("/media/upload", response_model=UploadOut)
+@limiter.limit("20/minute")
 async def upload_media(
+    request: Request,
     file: UploadFile,
     current_user: User = Depends(get_current_user),
 ):
+    _ = request
     mime_type = file.content_type or ""
 
     if mime_type not in ALLOWED_TYPES:
