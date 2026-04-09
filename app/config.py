@@ -6,7 +6,13 @@ class Settings(BaseSettings):
 
     # App
     app_env: str = "development"
-    allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:8080"
+    allowed_origins: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:5500,"
+        "http://127.0.0.1:5500,"
+        "https://letta.mizzenmast.dev"
+    )
 
     # Database
     database_url: str = "postgresql+asyncpg://letta:letta@localhost/letta"
@@ -50,6 +56,5 @@ class Settings(BaseSettings):
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",")]
-
 
 settings = Settings()

@@ -19,6 +19,27 @@ from app.models import Conversation, Member, User
 from app.models import Message, Receipt
 
 
+def _serialize_last_message(last_message: Message | None) -> MessageOut | None:
+    if not last_message:
+        return None
+
+    return MessageOut(
+        id=last_message.id,
+        conversation_id=last_message.conversation_id,
+        sender_id=last_message.sender_id,
+        type=last_message.type,
+        content=last_message.content,
+        media_url=last_message.media_url,
+        media_mime=last_message.media_mime,
+        reply_to_id=last_message.reply_to_id,
+        created_at=last_message.created_at,
+        deleted_at=last_message.deleted_at,
+        poll_data=last_message.poll_data,
+        reactions={},
+        my_reaction=None,
+    )
+
+
 async def _load_conversation(
     conversation_id: uuid.UUID,
     db: AsyncSession,
@@ -158,7 +179,7 @@ async def get_conversation_meta(
     unread_count = unread_result.scalar_one() or 0
 
     return {
-        "last_message": MessageOut.model_validate(last_message) if last_message else None,
+        "last_message": _serialize_last_message(last_message),
         "unread_count": unread_count,
     }
 

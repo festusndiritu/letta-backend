@@ -15,7 +15,7 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.messaging.connection import manager
@@ -31,6 +31,28 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _message_to_out(
+    message: Message,
+    *,
+    reactions: dict[str, int] | None = None,
+    my_reaction: str | None = None,
+) -> MessageOut:
+    return MessageOut(
+        id=message.id,
+        conversation_id=message.conversation_id,
+        sender_id=message.sender_id,
+        type=message.type,
+        content=message.content,
+        media_url=message.media_url,
+        media_mime=message.media_mime,
+        reply_to_id=message.reply_to_id,
+        created_at=message.created_at,
+        deleted_at=message.deleted_at,
+        poll_data=message.poll_data,
+        reactions=reactions or {},
+        my_reaction=my_reaction,
+    )
 
 async def _get_conversation_member_ids(
     conversation_id: uuid.UUID,
@@ -69,6 +91,38 @@ def _build_knock_copy(sender: User, event: SendMessageEvent) -> tuple[str, str]:
         body = body_by_type.get(event.type, "Sent a message")
 
     return title, body[:120]
+
+
+async def build_message_out_batch(
+    messages: list[Message],
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> list[MessageOut]:
+    if not messages:
+        return []
+
+    for msg in messages:
+        if msg.deleted_at:
+            msg.content = None
+            msg.media_url = None
+        else:
+            msg.content = decrypt_maybe(msg.content)
+
+    await _attach_reactions_for_messages(messages, user_id, db)
+
+    out: list[MessageOut] = []
+    for msg in messages:
+        reactions = getattr(msg, "reactions", {})
+        if not isinstance(reactions, dict):
+            reactions = {}
+        out.append(
+            _message_to_out(
+                msg,
+                reactions=reactions,
+                my_reaction=getattr(msg, "my_reaction", None),
+            )
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -121,9 +175,7 @@ async def handle_send_message(
 
     # Decrypt for outbound — TLS protects the wire, DB stores ciphertext
     message.content = decrypt_maybe(message.content)
-    message.reactions = []
-    message.my_reaction = None
-    message_out = MessageOut.model_validate(message).model_dump(mode="json")
+    message_out = _message_to_out(message, reactions={}, my_reaction=None).model_dump(mode="json")
     outbound_event = {"type": "message.new", "payload": message_out}
 
     # Fan-out to all members
@@ -352,7 +404,7 @@ async def get_message_history(
     db: AsyncSession,
     before_id: uuid.UUID | None = None,
     limit: int = 30,
-) -> list[Message]:
+) -> list[MessageOut]:
     result = await db.execute(
         select(Member).where(
             Member.conversation_id == conversation_id,
@@ -375,15 +427,7 @@ async def get_message_history(
     query = query.order_by(Message.created_at.desc()).limit(limit)
     result = await db.execute(query)
     messages = result.scalars().all()
-    for msg in messages:
-        if msg.deleted_at:
-            msg.content = None
-            msg.media_url = None
-        else:
-            msg.content = decrypt_maybe(msg.content)
-
-    await _attach_reactions_for_messages(messages, user.id, db)
-    return messages
+    return await build_message_out_batch(messages, user.id, db)
 
 
 async def _attach_reactions_for_messages(

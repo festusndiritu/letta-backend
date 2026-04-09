@@ -6,11 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
-from app.core.encryption import decrypt_maybe
 from app.database import get_db
 from app.messaging.connection import manager
 from app.messaging.schemas import MessageOut
-from app.messaging.service import _get_conversation_member_ids
+from app.messaging.service import _get_conversation_member_ids, build_message_out_batch
 from app.models import Member, Message, PinnedMessage, User
 
 router = APIRouter()
@@ -140,13 +139,5 @@ async def list_pins(
         .order_by(PinnedMessage.pinned_at.desc())
     )
     messages = result.scalars().all()
-    for message in messages:
-        if message.deleted_at:
-            message.content = None
-            message.media_url = None
-        else:
-            message.content = decrypt_maybe(message.content)
-        message.reactions = {}
-        message.my_reaction = None
-    return messages
+    return await build_message_out_batch(messages, current_user.id, db)
 

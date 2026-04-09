@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -59,11 +59,31 @@ class MessageOut(BaseModel):
 
 
 class CallOfferPayload(BaseModel):
-    call_id: uuid.UUID
+    call_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     conversation_id: uuid.UUID
     callee_id: uuid.UUID
     type: str
     sdp: dict
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_fields(cls, data):
+        if not isinstance(data, dict):
+            return data
+
+        # Accept legacy/mobile keys used by earlier client builds.
+        if "callee_id" not in data:
+            data["callee_id"] = data.get("target_user_id") or data.get("targetUserId")
+        if "type" not in data:
+            data["type"] = data.get("call_type") or data.get("callType")
+        if "sdp" not in data:
+            data["sdp"] = data.get("offer")
+        if "call_id" not in data:
+            legacy_call_id = data.get("callId")
+            if legacy_call_id is not None:
+                data["call_id"] = legacy_call_id
+
+        return data
 
 
 class CallAnswerPayload(BaseModel):

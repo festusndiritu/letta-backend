@@ -17,8 +17,10 @@ moderation hooks) require the server to see plaintext in memory briefly.
 """
 
 import base64
+import binascii
 import os
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from app.config import settings
@@ -54,7 +56,9 @@ def decrypt(ciphertext: str) -> str:
     """Decrypt a string produced by encrypt(). Returns plaintext."""
     key = _get_key()
     aesgcm = AESGCM(key)
-    raw = base64.b64decode(ciphertext)
+    raw = base64.b64decode(ciphertext, validate=True)
+    if len(raw) < 13:
+        raise ValueError("Encrypted payload is too short.")
     nonce, ct = raw[:12], raw[12:]
     return aesgcm.decrypt(nonce, ct, None).decode()
 
@@ -65,5 +69,25 @@ def encrypt_maybe(text: str | None) -> str | None:
 
 
 def decrypt_maybe(text: str | None) -> str | None:
-    """Decrypt if not None."""
-    return decrypt(text) if text else None
+    """Best-effort decrypt for mixed plaintext/encrypted rows."""
+    if text is None:
+        return None
+
+    # Legacy rows may contain plaintext (including emoji/non-ASCII text).
+    # If it is not valid base64, keep it as-is.
+    try:
+        raw = base64.b64decode(text, validate=True)
+    except (ValueError, binascii.Error):
+        return text
+
+    # Our encrypted payload is nonce(12) + ciphertext/tag; smaller blobs are plaintext.
+    if len(raw) < 13:
+        return text
+
+    try:
+        key = _get_key()
+        aesgcm = AESGCM(key)
+        nonce, ct = raw[:12], raw[12:]
+        return aesgcm.decrypt(nonce, ct, None).decode()
+    except (InvalidTag, UnicodeDecodeError, ValueError):
+        return text

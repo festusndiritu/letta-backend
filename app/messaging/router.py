@@ -4,6 +4,7 @@ import asyncio
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -95,6 +96,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                     try:
                         await _dispatch(event, current_user, event_db)
                         await event_db.commit()
+                    except ValidationError as e:
+                        await websocket.send_json({
+                            "type": "error",
+                            "payload": {
+                                "detail": "Invalid payload.",
+                                "errors": e.errors(),
+                            },
+                        })
                     except PermissionError as e:
                         await websocket.send_json({
                             "type": "error",
@@ -125,9 +134,10 @@ async def _dispatch(event: InboundEvent, user: User, db: AsyncSession) -> None:
     if event.type == "message.send":
         send_event = SendMessageEvent(**event.payload)
         message = await service.handle_send_message(user, send_event, db)
+        message_out = (await service.build_message_out_batch([message], user.id, db))[0]
         await manager.send(user.id, {
             "type": "message.sent",
-            "payload": MessageOut.model_validate(message).model_dump(mode="json"),
+            "payload": message_out.model_dump(mode="json"),
         })
 
     elif event.type == "message.ack":
@@ -370,7 +380,8 @@ async def get_missed_messages(
         .order_by(Message.created_at.asc())
         .limit(500)
     )
-    return result.scalars().all()
+    messages = result.scalars().all()
+    return await service.build_message_out_batch(messages, current_user.id, db)
 
 
 @router.get("/calls", response_model=list[dict])

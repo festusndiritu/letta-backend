@@ -17,6 +17,7 @@ from app.auth.dependencies import get_current_user
 from app.core.encryption import decrypt_maybe
 from app.database import get_db
 from app.messaging.schemas import MessageOut
+from app.messaging.service import build_message_out_batch
 from app.models import Member, Message, User
 
 router = APIRouter()
@@ -84,7 +85,7 @@ async def search_messages(
         if len(matched) >= limit:
             break
 
-    return matched
+    return await build_message_out_batch(matched, current_user.id, db)
 
 
 @router.get("/users/search", response_model=list[PublicUserOut])
