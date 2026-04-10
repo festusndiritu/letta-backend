@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel, Field, model_validator
 # ---------------------------------------------------------------------------
 
 class SendMessageEvent(BaseModel):
+    model_config = {"extra": "ignore"}   # ignore client_id and any other extra fields
+
     conversation_id: uuid.UUID
     type: str  # text | image | video | audio | document | poll
     content: str | None = None
@@ -59,11 +62,17 @@ class MessageOut(BaseModel):
 
 
 class CallOfferPayload(BaseModel):
+    """
+    sdp can be a dict (RTCSessionDescriptionInit) or a raw SDP string.
+    Both are accepted — the relay just passes it through to the peer.
+    """
+    model_config = {"extra": "ignore"}
+
     call_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     conversation_id: uuid.UUID
     callee_id: uuid.UUID
     type: str
-    sdp: dict
+    sdp: Any  # str | dict — accepted either way, relayed as-is
 
     @model_validator(mode="before")
     @classmethod
@@ -71,11 +80,10 @@ class CallOfferPayload(BaseModel):
         if not isinstance(data, dict):
             return data
 
-        # Accept legacy/mobile keys used by earlier client builds.
         if "callee_id" not in data:
             data["callee_id"] = data.get("target_user_id") or data.get("targetUserId")
         if "type" not in data:
-            data["type"] = data.get("call_type") or data.get("callType")
+            data["type"] = data.get("call_type") or data.get("callType") or "audio"
         if "sdp" not in data:
             data["sdp"] = data.get("offer")
         if "call_id" not in data:
@@ -87,20 +95,26 @@ class CallOfferPayload(BaseModel):
 
 
 class CallAnswerPayload(BaseModel):
+    model_config = {"extra": "ignore"}
+
     call_id: uuid.UUID
-    sdp: dict
+    sdp: Any  # str | dict — relayed as-is
 
 
 class CallIcePayload(BaseModel):
+    model_config = {"extra": "ignore"}
+
     call_id: uuid.UUID
     target_user_id: uuid.UUID
-    candidate: dict
+    candidate: Any  # RTCIceCandidateInit dict or raw string — relayed as-is
 
 
 class CallSimplePayload(BaseModel):
+    model_config = {"extra": "ignore"}
+
     call_id: uuid.UUID
 
 
 class MessageHistoryParams(BaseModel):
-    before_id: uuid.UUID | None = None  # cursor — load messages before this id
+    before_id: uuid.UUID | None = None
     limit: int = 30
