@@ -452,6 +452,6 @@ async def _attach_reactions_for_messages(
             my_reactions[message_id] = emoji
 
     for message in messages:
-        message.reactions = counts.get(message.id, {})
-        message.my_reaction = my_reactions.get(message.id)
+        object.__setattr__(message, "reactions", counts.get(message.id, {}))
+        object.__setattr__(message, "my_reaction", my_reactions.get(message.id))
 
