@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     tiara_api_key: str = ""
     tiara_endpoint: str = "https://api2.tiaraconnect.io/api/messaging/sendsms"
     tiara_sender_id: str = "CONNECT"
+    tiara_sms_signature: str = "nCazjmBNy4T"
 
     # Resend (email)
     resend_api_key: str = ""
